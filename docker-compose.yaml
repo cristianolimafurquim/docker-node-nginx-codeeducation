@@ -1,0 +1,47 @@
+version: '3.7'
+
+services:
+  app:
+    build:
+      context: ./node
+    image: cristianolimafurquim/node-codeeducation
+    container_name: app
+    entrypoint: dockerize -wait tcp://db:3306 -timeout 20s docker-entrypoint.sh
+    command: bash -c "cp -r /usr/src/cache/node_modules/. /usr/src/app/node_modules/ && npm start"
+    restart: always
+    networks: 
+      - codeeducation-network
+    volumes: 
+      - ./node:/usr/src/app
+    tty: true
+    depends_on: 
+      - db
+  nginx:
+    build:
+      context: ./nginx
+    image: cristianolimafurquim/nginx-codeeducation
+    container_name: nginx
+    networks: 
+        - codeeducation-network
+    ports: 
+        - "8080:80"
+    depends_on: 
+      - app
+  db:
+    build: 
+      context: ./mysql
+    image: cristianolimafurquim/mysql-codeeducation
+    container_name: db
+    command: --innodb-use-native-aio=0
+    restart: always
+    tty: true
+    volumes: 
+      - ./mysql/data:/var/lib/mysql
+    environment: 
+      - MYSQL_DATABASE=nodedb
+      - MYSQL_ROOT_PASSWORD=root
+    networks: 
+      - codeeducation-network
+networks: 
+  codeeducation-network:
+    driver: bridge
